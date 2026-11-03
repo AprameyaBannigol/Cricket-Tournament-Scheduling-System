@@ -1,0 +1,308 @@
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  TOURNAMENT HUB — Design System (Premium Light Theme)
+ *  Visual Identity for Cricket Tournament & Stadium Scheduling
+ * ══════════════════════════════════════════════════════════════
+ *
+ *  COLOUR PHILOSOPHY
+ *  ─────────────────
+ *  A refined light canvas (#F8F9FB) provides breathing room and
+ *  professional clarity. Deep navy (#0F1A2E) anchors text with
+ *  authority. Cricket-pitch green (#16A34A) serves as the primary
+ *  accent — earthy, institutional, and unmistakably sporting.
+ *  The sidebar uses a deep indigo-navy (#111B3C) for contrast
+ *  and gravitas, separating navigation from content.
+ *
+ *  TYPOGRAPHY
+ *  ──────────
+ *  Inter — exceptional readability, tabular numbers for scores
+ *  and statistics, and a full weight axis from 300–900.
+ *  JetBrains Mono — match IDs, scores, schedule codes.
+ *
+ *  The type scale uses a 1.25 modular ratio for harmony.
+ */
+
+@import "tailwindcss";
+
+/* ═══ CUSTOM THEME ═══════════════════════════════════════════ */
+@theme {
+  /* ── Neutral Scale (Navy-tinted grays) ── */
+  --color-slate-950: #0F1A2E;
+  --color-slate-900: #1A2540;
+  --color-slate-800: #293755;
+  --color-slate-700: #374B6A;
+  --color-slate-600: #4A6080;
+  --color-slate-500: #64748B;
+  --color-slate-400: #8896A7;
+  --color-slate-300: #B0BCCC;
+  --color-slate-200: #D1D9E4;
+  --color-slate-100: #E8ECF2;
+  --color-slate-50:  #F1F4F8;
+
+  /* ── Primary: Cricket Green ── */
+  --color-cricket-700: #15803D;
+  --color-cricket-600: #16A34A;
+  --color-cricket-500: #22C55E;
+  --color-cricket-400: #4ADE80;
+  --color-cricket-300: #86EFAC;
+  --color-cricket-100: #DCFCE7;
+  --color-cricket-50:  #F0FDF4;
+
+  /* ── Sidebar Navy ── */
+  --color-navy-950: #0A1128;
+  --color-navy-900: #111B3C;
+  --color-navy-800: #1A2650;
+  --color-navy-700: #243365;
+  --color-navy-600: #2E4179;
+
+  /* ── Status: Success ── */
+  --color-success: #16A34A;
+  --color-success-bg: #F0FDF4;
+  --color-success-border: #BBF7D0;
+
+  /* ── Status: Warning / Pending ── */
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  /* ── Status: Error / Conflict ── */
+  --color-error: #DC2626;
+  --color-error-bg: #FEF2F2;
+  --color-error-border: #FECACA;
+
+  /* ── Status: Info / Scheduled ── */
+  --color-info: #2563EB;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #BFDBFE;
+
+  /* ── Surfaces ── */
+  --color-surface-base: #F8F9FB;
+  --color-surface-card: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-inset: #F1F4F8;
+  --color-surface-overlay: #FFFFFF;
+  --color-surface-sidebar: #111B3C;
+
+  /* ── Borders ── */
+  --color-border: #E2E8F0;
+  --color-border-light: #F1F4F8;
+  --color-border-strong: #CBD5E1;
+
+  /* ── Typography Scale ── */
+  --font-size-display: 2.25rem;
+  --font-size-h1: 1.875rem;
+  --font-size-h2: 1.5rem;
+  --font-size-h3: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-caption: 0.875rem;
+  --font-size-micro: 0.75rem;
+
+  /* ── Radii ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows (soft, layered for light theme) ── */
+  --shadow-xs: 0 1px 2px rgba(15, 26, 46, 0.04);
+  --shadow-card: 0 1px 3px rgba(15, 26, 46, 0.06), 0 1px 2px rgba(15, 26, 46, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(15, 26, 46, 0.08), 0 2px 4px rgba(15, 26, 46, 0.04);
+  --shadow-dropdown: 0 10px 25px rgba(15, 26, 46, 0.12), 0 4px 10px rgba(15, 26, 46, 0.06);
+  --shadow-sidebar: 2px 0 8px rgba(10, 17, 40, 0.08);
+
+  /* ── Fonts ── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Easing ── */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Animations ── */
+  --animate-slide-up: slide-up 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-fade-in: fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-pulse-subtle: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* ═══ KEYFRAMES ══════════════════════════════════════════════ */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+/* ═══ BASE STYLES ════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-base);
+  color: var(--color-slate-900);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: var(--color-slate-950);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-300);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-slate-400);
+}
+
+/* ═══ UTILITY LAYERS ═════════════════════════════════════════ */
+
+/* Tabular mono numbers for scores/stats */
+@utility font-score {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* ═══ COMPONENT PATTERNS ═════════════════════════════════════ */
+
+/* Card */
+.card {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-border-strong);
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-micro);
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+}
+
+/* Button primary — cricket green */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.125rem;
+  background: var(--color-cricket-600);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-smooth);
+  box-shadow: 0 1px 2px rgba(22, 163, 74, 0.2);
+}
+
+.btn-primary:hover {
+  background: var(--color-cricket-700);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Button secondary */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.125rem;
+  background: var(--color-surface-card);
+  color: var(--color-slate-700);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-smooth);
+}
+
+.btn-secondary:hover {
+  background: var(--color-surface-inset);
+  border-color: var(--color-border-strong);
+  color: var(--color-slate-900);
+}
+
+/* Input field */
+.input-field {
+  width: 100%;
+  padding: 0.5rem 0.875rem;
+  background: var(--color-surface-card);
+  color: var(--color-slate-900);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-caption);
+  transition: all 0.15s var(--ease-smooth);
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--color-cricket-600);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.input-field::placeholder {
+  color: var(--color-slate-400);
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--color-border);
+  border: none;
+  margin: 0;
+}
