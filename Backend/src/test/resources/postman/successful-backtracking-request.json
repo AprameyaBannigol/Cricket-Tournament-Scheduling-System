@@ -1,0 +1,87 @@
+{
+  "tournamentId": 84,
+  "tournamentName": "North District T20 Cup",
+  "startDate": "2026-11-10",
+  "endDate": "2026-11-12",
+  "timeZone": "Asia/Kolkata",
+  "teams": [
+    {
+      "id": 101,
+      "name": "North Stars",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-11", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ]
+    },
+    {
+      "id": 102,
+      "name": "River Hawks",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-11", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Valley Lions",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-11", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ]
+    }
+  ],
+  "stadiums": [
+    {
+      "id": 201,
+      "name": "North District Cricket Ground",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-11", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ],
+      "supportedMatchDurationsMinutes": [180]
+    }
+  ],
+  "officials": [
+    {
+      "id": 301,
+      "name": "A. Sharma",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-11", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ],
+      "eligibleRounds": [1]
+    },
+    {
+      "id": 302,
+      "name": "M. Patel",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ],
+      "eligibleRounds": [2]
+    },
+    {
+      "id": 303,
+      "name": "R. Khan",
+      "availability": [
+        { "date": "2026-11-10", "startTime": "08:00:00", "endTime": "18:00:00" },
+        { "date": "2026-11-12", "startTime": "08:00:00", "endTime": "18:00:00" }
+      ],
+      "eligibleRounds": [3]
+    }
+  ],
+  "matchDurationMinutes": 180,
+  "availableTimeSlots": ["10:00:00", "12:00:00"],
+  "bufferMinutes": 30,
+  "officialsRequiredPerMatch": 1,
+  "constraints": {
+    "minimumRecoveryMinutes": 60,
+    "travelConstraintEnabled": false,
+    "minimumTravelMinutes": null,
+    "venueTravelTimes": []
+  }
+}
