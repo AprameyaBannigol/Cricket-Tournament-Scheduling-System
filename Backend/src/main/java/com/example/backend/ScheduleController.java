@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.example.backend.dto.SchedulingResult;
 import com.example.backend.dto.CompleteSchedulingResult;
@@ -32,6 +33,7 @@ public class ScheduleController {
     }
 
     @PostMapping("/fixtures")
+    @PreAuthorize("hasAnyRole('ADMIN','ORGANIZER')")
     public SchedulingResult generateFixtures(
             @Valid @RequestBody TournamentInputDTO tournament) {
         try {
@@ -46,13 +48,14 @@ public class ScheduleController {
     }
 
     @PostMapping("/generate")
+    @PreAuthorize("hasAnyRole('ADMIN','ORGANIZER')")
     public ResponseEntity<CompleteSchedulingResult> generateSchedule(
             @Valid @RequestBody TournamentSchedulingInputDTO tournament) {
         CompleteSchedulingResult result = scheduleAllocationService.generateSchedule(tournament);
         HttpStatus status = switch (result.status()) {
             case SCHEDULE_GENERATED -> HttpStatus.OK;
             case INVALID_INPUT -> HttpStatus.BAD_REQUEST;
-            case NO_FEASIBLE_SCHEDULE -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case NO_FEASIBLE_SCHEDULE -> HttpStatus.UNPROCESSABLE_CONTENT;
             case SEARCH_LIMIT_REACHED -> HttpStatus.SERVICE_UNAVAILABLE;
         };
         return ResponseEntity.status(status).body(result);

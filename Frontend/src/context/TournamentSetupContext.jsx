@@ -362,6 +362,40 @@ export function TournamentSetupProvider({ children }) {
     return id
   }
 
+  const removeTournament = (tournamentId) => {
+    if (!demo.tournaments.some((tournament) => tournament.id === tournamentId)) {
+      throw new Error('This tournament no longer exists.')
+    }
+
+    setDemo((previous) => {
+      const deletedMatchIds = new Set(
+        previous.matches
+          .filter((match) => match.tournamentId === tournamentId)
+          .map((match) => match.id),
+      )
+      const remainingTournaments = previous.tournaments.filter((tournament) => tournament.id !== tournamentId)
+
+      return {
+        ...previous,
+        tournaments: remainingTournaments,
+        teams: previous.teams.filter((team) => team.tournamentId !== tournamentId),
+        matches: previous.matches.filter((match) => match.tournamentId !== tournamentId),
+        scheduleVersions: previous.scheduleVersions.filter((version) => (
+          version.tournamentId !== tournamentId
+          && !(version.matches || []).some((match) => (
+            match.tournamentId === tournamentId || deletedMatchIds.has(match.id)
+          ))
+        )),
+        conflicts: previous.conflicts.filter((conflict) => (
+          conflict.tournamentId !== tournamentId && !deletedMatchIds.has(conflict.matchId)
+        )),
+        activeTournamentId: previous.activeTournamentId === tournamentId
+          ? remainingTournaments[0]?.id ?? null
+          : previous.activeTournamentId,
+      }
+    })
+  }
+
   const saveAvailability = (availability) => setDemo((previous) => ({ ...previous, availability }))
   const saveConstraints = (constraints) => setDemo((previous) => ({ ...previous, constraints }))
   const saveMatchConfig = (matchConfig) => setDemo((previous) => ({ ...previous, matchConfig }))
@@ -554,6 +588,7 @@ export function TournamentSetupProvider({ children }) {
     saveConstraints,
     saveMatchConfig,
     createTournament,
+    removeTournament,
     generateSchedule,
     enterMatchResult,
     resolveConflict,

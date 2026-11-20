@@ -19,13 +19,38 @@ export default function SchedulePage() {
   const { pathname } = useLocation()
   const resultsPage = pathname === '/results'
   const { activeTournament, tournaments, setActiveTournament, teams: allTeams, matches: allMatches } = useTournamentSetup()
+  const matches = useMemo(() => allMatches.filter((match) => match.tournamentId === activeTournament?.id), [allMatches, activeTournament?.id])
+  const teams = useMemo(() => allTeams.filter((team) => team.tournamentId === activeTournament?.id), [allTeams, activeTournament?.id])
+  return (
+    <div className="workspace-page">
+      <header className="page-intro">
+        <span className="eyebrow">{activeTournament?.name || 'Cricket tournament'} · DEMO DATA</span>
+        <h1>{resultsPage ? 'Match results' : 'Match schedule'}</h1>
+        <p>{resultsPage ? 'Enter or update sample scores; the points table recalculates from saved results.' : 'Generated fixtures, grounds and match officials for the selected tournament.'}</p>
+        <div className="page-actions">
+          <Link className="button button-primary" to="/schedule/generate">Generate sample fixtures <CalendarDays size={16} /></Link>
+          <Link className="button button-secondary" to="/schedule/conflicts">Review conflicts</Link>
+          <Link className="button button-secondary" to="/versions">Schedule versions</Link>
+          <Link className="button button-secondary" to="/results">Match results</Link>
+          <Link className="button button-secondary" to="/standings">Standings</Link>
+        </div>
+      </header>
+      <div className="demo-notice">Sample schedule stored in this browser. Venue and official examples are not backend-validated.</div>
+      <ScheduleFixtures matches={matches} teams={teams} demo renderSelector={(reset) =>
+        <label><span className="sr-only">Select tournament</span><select value={activeTournament?.id || ''}
+          onChange={(event) => { setActiveTournament(event.target.value); reset() }}>
+          {tournaments.map((tournament) => <option value={tournament.id} key={tournament.id}>{tournament.name}</option>)}
+        </select></label>} />
+    </div>
+  )
+}
+
+export function ScheduleFixtures({ matches, teams, demo, renderSelector }) {
   const [view, setView] = useState('List')
   const [teamFilter, setTeamFilter] = useState('')
   const [stadiumFilter, setStadiumFilter] = useState('')
   const [resultMatchId, setResultMatchId] = useState(null)
 
-  const matches = useMemo(() => allMatches.filter((match) => match.tournamentId === activeTournament?.id), [allMatches, activeTournament?.id])
-  const teams = useMemo(() => allTeams.filter((team) => team.tournamentId === activeTournament?.id), [allTeams, activeTournament?.id])
   const filteredMatches = useMemo(() => matches.filter((match) => {
     const hasTeam = !teamFilter || match.teamA === teamFilter || match.teamB === teamFilter
     const hasStadium = !stadiumFilter || match.stadium === stadiumFilter
@@ -49,27 +74,13 @@ export default function SchedulePage() {
   const stadiums = [...new Set(matches.map((match) => match.stadium))].filter(Boolean)
 
   return (
-    <div className="workspace-page">
-      <header className="page-intro">
-        <span className="eyebrow">{activeTournament?.name || 'Cricket tournament'} · DEMO DATA</span>
-        <h1>{resultsPage ? 'Match results' : 'Match schedule'}</h1>
-        <p>{resultsPage ? 'Enter or update sample scores; the points table recalculates from saved results.' : 'Generated fixtures, grounds and match officials for the selected tournament.'}</p>
-        <div className="page-actions">
-          <Link className="button button-primary" to="/schedule/generate">Generate sample fixtures <CalendarDays size={16} /></Link>
-          <Link className="button button-secondary" to="/schedule/conflicts">Review conflicts</Link>
-          <Link className="button button-secondary" to="/versions">Schedule versions</Link>
-          <Link className="button button-secondary" to="/results">Match results</Link>
-          <Link className="button button-secondary" to="/standings">Standings</Link>
-        </div>
-      </header>
-      <div className="demo-notice">Sample schedule stored in this browser. Venue and official examples are not backend-validated.</div>
       <section className="content-panel">
         <div className="schedule-toolbar">
           <div className="schedule-views" aria-label="Schedule view">
             {viewOptions.map((option) => <button key={option} type="button" className={view === option ? 'selected' : ''} aria-pressed={view === option} onClick={() => setView(option)}>{option}</button>)}
           </div>
           <div className="schedule-filters">
-            <label><span className="sr-only">Select tournament</span><select value={activeTournament?.id || ''} onChange={(event) => { setActiveTournament(event.target.value); setTeamFilter(''); setStadiumFilter('') }}>{tournaments.map((tournament) => <option value={tournament.id} key={tournament.id}>{tournament.name}</option>)}</select></label>
+            {renderSelector?.(() => { setTeamFilter(''); setStadiumFilter('') })}
             <label><span className="sr-only">Filter by team</span><select value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}><option value="">All teams</option>{teams.map((team) => <option key={team.id}>{team.name}</option>)}</select></label>
             <label><span className="sr-only">Filter by stadium</span><select value={stadiumFilter} onChange={(event) => setStadiumFilter(event.target.value)}><option value="">All grounds</option>{stadiums.map((stadium) => <option key={stadium}>{stadium}</option>)}</select></label>
           </div>
@@ -79,13 +90,15 @@ export default function SchedulePage() {
             {groups.map(([group, groupMatches]) => <section className="schedule-group" key={group}>
               {view !== 'List' && <h2>{view === 'Calendar' ? showDate(group) : group}</h2>}
               <div className="schedule-match-list">
-                {groupMatches.map((match) => <ScheduleMatch key={match.id} match={match} resultOpen={resultMatchId === match.id} onToggleResult={() => setResultMatchId(resultMatchId === match.id ? null : match.id)} />)}
+                {groupMatches.map((match) => demo
+                  ? <ScheduleMatch key={match.id} match={match} resultOpen={resultMatchId === match.id}
+                    onToggleResult={() => setResultMatchId(resultMatchId === match.id ? null : match.id)} />
+                  : <MatchCard key={match.id} match={match} />)}
               </div>
             </section>)}
           </div>
-        ) : <p className="empty-filter">No matches found. Generate sample fixtures or adjust your filters.</p>}
+        ) : <p className="empty-filter">{demo ? 'No matches found. Generate sample fixtures or adjust your filters.' : 'No saved fixtures match these filters.'}</p>}
       </section>
-    </div>
   )
 }
 
@@ -107,18 +120,9 @@ function ScheduleMatch({ match, resultOpen, onToggleResult }) {
     }
   }
 
-  return (
-    <article className="schedule-match">
-      <span className={`match-status status-${match.status.toLowerCase()}`}>{match.status}</span>
-      <span className="match-time"><Clock3 size={14} />{match.time}</span>
-      <div className="match-main">
-        <strong>{match.teamA} <i>vs</i> {match.teamB}</strong>
-        <small>Match {match.matchNumber} · {match.round} · {showDate(match.date)}</small>
-        {match.status === 'Completed' && <b className="match-score">{match.teamA} {match.scoreA}/{match.oversA} · {match.teamB} {match.scoreB}/{match.oversB} {match.winner ? `· ${match.winner} won` : ''}</b>}
-        <div className="match-details">
-          <span><MapPin size={13} />{match.stadium} · {match.pitch || 'Pitch TBC'}</span>
-          <span><Users size={13} />{match.officials?.join(', ') || 'Officials to be assigned'}</span>
-        </div>
+  return <MatchCard match={match} showResults action={
+    <button className="match-result-toggle" type="button" onClick={onToggleResult}><Pencil size={14} /> {match.status === 'Completed' ? 'Edit result' : 'Enter result'}</button>
+  }>
         {resultOpen && (
           <form className="match-result-form" onSubmit={saveResult}>
             <label>{match.teamA} runs<input aria-label={`${match.teamA} runs`} type="number" min="0" max="999" required value={scoreA} onChange={(event) => setScoreA(event.target.value)} /></label>
@@ -129,9 +133,26 @@ function ScheduleMatch({ match, resultOpen, onToggleResult }) {
             {error && <span className="form-message" role="alert">{error}</span>}
           </form>
         )}
+  </MatchCard>
+}
+
+function MatchCard({ match, showResults, action, children }) {
+  return (
+    <article className="schedule-match">
+      <span className={`match-status status-${match.status.toLowerCase().replaceAll(' ', '-')}`}>{match.status}</span>
+      <span className="match-time"><Clock3 size={14} />{match.time}</span>
+      <div className="match-main">
+        <strong>{match.teamA} <i>vs</i> {match.teamB}</strong>
+        <small>Match {match.matchNumber} · {match.round} · {showDate(match.date)}</small>
+        {showResults && match.status === 'Completed' && <b className="match-score">{match.teamA} {match.scoreA}/{match.oversA} · {match.teamB} {match.scoreB}/{match.oversB} {match.winner ? `· ${match.winner} won` : ''}</b>}
+        <div className="match-details">
+          <span><MapPin size={13} />{match.stadium}{match.pitch || showResults ? ` · ${match.pitch || 'Pitch TBC'}` : ''}</span>
+          <span><Users size={13} />{match.officials?.join(', ') || 'Officials to be assigned'}</span>
+        </div>
+        {children}
       </div>
       <span className="match-date">{match.date}</span>
-      <button className="match-result-toggle" type="button" onClick={onToggleResult}><Pencil size={14} /> {match.status === 'Completed' ? 'Edit result' : 'Enter result'}</button>
+      {action}
     </article>
   )
 }

@@ -1,13 +1,17 @@
 # Cricket Tournament Scheduling System
 
-TournamentHub is a React and Vite frontend for organizing cricket tournaments, teams, venues, officials, fixtures and standings.
+TournamentHub is the React and Vite frontend for CricCraft.
 
-## Frontend demonstration
+## Live tournament workspace
 
-The React/Vite frontend includes a public landing page, tournament setup, tournament and resource management, schedule views, match results, standings, schedule history, and a sample conflict-resolution workflow.
+Run `npm run dev` and open `http://localhost:5174`. Vite forwards `/api` to Spring Boot on `http://127.0.0.1:8080`. Start the backend with its PostgreSQL connection configured. A production host should serve the SPA with a history fallback and forward same-origin `/api` requests to Spring Boot.
 
-The cricket demo dataset is shared through React context and saved in browser `localStorage`. Organizers can create tournaments, manage teams, grounds and officials, save availability and scheduling preferences, generate round-robin fixtures, enter scores, and restore schedule versions. The initial KLE Cricket Championship includes eight teams, four grounds, four officials, a full 28-match round robin, sample results, and seeded conflicts.
+The live workspace lists, creates, opens, and edits tournaments. The create wizard sends its selected format in the backend's `category` field. The editor carries the current status forward when saving. Resource counts are unavailable from the tournament list API.
 
-This is a frontend demonstration, not a live service. Fixture assignments and conflict examples are local samples; backend scheduling, availability validation, authentication, and server-side persistence are not connected.
+Open a tournament to manage its teams, stadiums, and officials. Each page lists, registers, and edits records for the selected tournament. Availability windows, blackout dates, and official match counts can be explored in Demo Mode.
 
-Run `npm run dev` to start the frontend and `npm run build` to create a production bundle.
+## Demo workspace
+
+Use **Demo mode** in the navigation or open `/demo`. Demo data and changes are saved in this browser. The sample workspace includes the tournament and resource management demo, setup preferences, allocation, fixtures, conflict resolution, results, standings, versions, and analytics. The demo does not call the tournament API.
+
+Run `npm run build` to create the production bundle.

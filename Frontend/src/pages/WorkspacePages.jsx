@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowDownRight,
@@ -11,12 +11,18 @@ import {
   CircleHelp,
   Clock3,
   Flag,
+  Eye,
   MapPin,
   Shield,
   Trophy,
   Users,
 } from 'lucide-react'
+import { createTournament as createLiveTournament, getTournament } from '../api/tournaments'
+import { useApiResource } from '../api/useApiResource'
+import TournamentRequestStatus from '../components/TournamentRequestStatus'
 import { useTournamentSetup } from '../context/TournamentSetupContext'
+import { useAuth } from '../context/AuthContext'
+import { dashboardDestination, loginRoles, roleFromLoginPath } from '../auth/roleNavigation'
 
 const workflowSteps = [
   'Tournament details',
@@ -28,8 +34,13 @@ const workflowSteps = [
   'Review',
 ]
 
-export function LandingPage() {
-  const { activeTournament, teams, stadiums, matches, matchConfig } = useTournamentSetup()
+export function DemoLandingPage() {
+  const preview = useTournamentSetup()
+  return <LandingPage preview={preview} />
+}
+
+export function LandingPage({ preview }) {
+  const { activeTournament, teams = [], stadiums = [], matches = [], matchConfig } = preview ?? {}
   const activeMatches = matches.filter((match) => match.tournamentId === activeTournament?.id)
   const activeTeams = teams.filter((team) => team.tournamentId === activeTournament?.id)
   return (
@@ -56,7 +67,13 @@ export function LandingPage() {
             <span><Check size={15} /> Shareable tournament pages</span>
           </div>
         </div>
-        <StandingsPreview teams={activeTeams} matches={activeMatches} tournament={activeTournament} matchConfig={matchConfig} />
+        {preview
+          ? <StandingsPreview teams={activeTeams} matches={activeMatches} tournament={activeTournament} matchConfig={matchConfig} />
+          : <div className="product-panel setup-preview">
+              <div className="panel-heading"><div><span className="panel-kicker">TOURNAMENTS</span><strong>Find your competition</strong></div><Trophy size={18} /></div>
+              <Link className="text-link" to="/tournaments">Browse tournaments <ArrowRight size={16} /></Link>
+              <p className="preview-caption"><a className="text-link" href="/demo">Explore the sample tournament in demo mode</a></p>
+            </div>}
       </section>
 
       <section className="landing-section">
@@ -69,7 +86,7 @@ export function LandingPage() {
           </p>
           <Link className="text-link" to="/tournaments/create">Set up a tournament <ArrowRight size={16} /></Link>
         </div>
-        <div className="product-panel setup-preview">
+        {preview ? <div className="product-panel setup-preview">
           <div className="panel-heading">
             <div><span className="panel-kicker">TOURNAMENT SETUP</span><strong>{activeTournament?.name || 'KLE Cricket Championship 2026'}</strong></div>
             <span className="panel-tag">Draft</span>
@@ -83,7 +100,10 @@ export function LandingPage() {
             </div>
           ))}
           <p className="preview-caption">A preview of the organizer setup experience · sample content</p>
-        </div>
+        </div> : <div className="product-panel setup-preview">
+          <div className="panel-heading"><div><span className="panel-kicker">TOURNAMENT SETUP</span><strong>Details, format and review</strong></div><Trophy size={17} /></div>
+          <Link className="text-link" to="/tournaments/create">Start setup <ArrowRight size={16} /></Link>
+        </div>}
       </section>
 
       <section className="landing-section section-reverse">
@@ -96,7 +116,7 @@ export function LandingPage() {
           </p>
           <Link className="text-link" to="/schedule">View the schedule <ArrowRight size={16} /></Link>
         </div>
-        <div className="product-panel fixture-preview">
+        {preview ? <div className="product-panel fixture-preview">
           <div className="panel-heading">
             <div><span className="panel-kicker">FIXTURE PREVIEW</span><strong>Matchday 03 · 4 Nov</strong></div>
             <CalendarDays size={17} />
@@ -109,7 +129,10 @@ export function LandingPage() {
             </div>
           ))}
           <p className="preview-caption">Sample fixtures from the selected tournament · demonstration data</p>
-        </div>
+        </div> : <div className="product-panel fixture-preview">
+          <div className="panel-heading"><div><span className="panel-kicker">FIXTURES</span><strong>Schedule preview</strong></div><CalendarDays size={17} /></div>
+          <a className="text-link" href="/demo/schedule">Browse sample fixtures <ArrowRight size={16} /></a>
+        </div>}
       </section>
 
       <section className="landing-section">
@@ -125,7 +148,7 @@ export function LandingPage() {
             <Link className="text-link" to="/officials">Manage officials <ArrowRight size={16} /></Link>
           </div>
         </div>
-        <div className="product-panel resource-preview">
+        {preview ? <div className="product-panel resource-preview">
           <div className="panel-heading"><div><span className="panel-kicker">REGISTERED GROUNDS</span><strong>Competition venues</strong></div><MapPin size={17} /></div>
           {stadiums.slice(0, 3).map((stadium) => (
             <div className="resource-row" key={stadium.id}>
@@ -135,14 +158,17 @@ export function LandingPage() {
             </div>
           ))}
           <p className="preview-caption">Sample venue information · availability is not validated by a backend</p>
-        </div>
+        </div> : <div className="product-panel resource-preview">
+          <div className="panel-heading"><div><span className="panel-kicker">REGISTERED GROUNDS</span><strong>Competition venues</strong></div><MapPin size={17} /></div>
+          <a className="text-link" href="/demo/stadiums">Browse sample grounds <ArrowRight size={16} /></a>
+        </div>}
       </section>
 
       <section className="public-showcase">
         <span className="eyebrow">One public view for everyone following along</span>
         <h2>Fixtures and standings, easy to find.</h2>
         <p>Share a tournament page with players, supporters and the wider cricket community.</p>
-        <Link className="button button-primary" to={`/tournaments/${activeTournament?.id || 'tn-001'}`}>View a tournament <ArrowRight size={16} /></Link>
+        <Link className="button button-primary" to={activeTournament ? `/tournaments/${activeTournament.id}` : "/tournaments"}>View a tournament <ArrowRight size={16} /></Link>
         <div className="public-showcase-links">
           <Link to="/standings"><Trophy size={15} /> Points table</Link>
           <Link to="/schedule"><CalendarDays size={15} /> Match fixtures</Link>
@@ -178,16 +204,31 @@ function StandingsPreview({ teams, matches, tournament, matchConfig }) {
   )
 }
 
-export function CreateTournamentPage() {
-  const navigate = useNavigate()
+export function DemoCreateTournamentPage() {
   const { createTournament, teams, activeTournament } = useTournamentSetup()
-  const [step, setStep] = useState(0)
+  return (
+    <CreateTournamentPage
+      createDemoTournament={createTournament}
+      teamNames={teams.filter((team) => team.tournamentId === activeTournament?.id).map((team) => team.name).join('\n')}
+    />
+  )
+}
+
+export function CreateTournamentPage({ createDemoTournament, teamNames = '' }) {
+  const navigate = useNavigate()
+  const demo = Boolean(createDemoTournament)
+  const steps = demo ? workflowSteps.map((_, index) => index) : [0, 2, 6]
+  const [stepIndex, setStepIndex] = useState(0)
+  const step = steps[stepIndex]
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const submitting = useRef(false)
   const [form, setForm] = useState({
     name: '',
     hostInstitution: '',
-    startDate: '2026-11-01',
-    endDate: '2026-11-18',
-    teams: teams.filter((team) => team.tournamentId === activeTournament?.id).map((team) => team.name).join('\n'),
+    startDate: demo ? '2026-11-01' : '',
+    endDate: demo ? '2026-11-18' : '',
+    teams: teamNames,
     format: 'T20 Round Robin',
     stadiums: '',
     officials: '',
@@ -196,20 +237,36 @@ export function CreateTournamentPage() {
   })
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
-  const complete = () => {
-    const tournamentId = createTournament({
-      name: form.name,
-      hostInstitution: form.hostInstitution,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      teams: form.teams.split('\n').map((name) => name.trim()).filter(Boolean),
-      format: form.format,
-      stadiums: form.stadiums.split('\n').map((name) => name.trim()).filter(Boolean),
-      officials: form.officials.split('\n').map((name) => name.trim()).filter(Boolean),
-      matchDuration: form.matchDuration,
-      recoveryHours: form.recoveryHours,
-    })
-    navigate(`/teams?tournament=${tournamentId}`)
+  const invalidDates = form.startDate && form.endDate && form.endDate < form.startDate
+  const complete = async () => {
+    if (submitting.current || !form.name.trim() || invalidDates) return
+    submitting.current = true
+    setSaving(true)
+    setError('')
+    try {
+      if (demo) {
+        const names = (value) => value.split('\n').map((name) => name.trim()).filter(Boolean)
+        const tournamentId = createDemoTournament({
+          ...form,
+          name: form.name.trim(),
+          teams: names(form.teams),
+          stadiums: names(form.stadiums),
+          officials: names(form.officials),
+        })
+        navigate(`/teams?tournament=${tournamentId}`)
+      } else {
+        const tournament = await createLiveTournament({
+          ...form,
+          category: form.format,
+        })
+        navigate(`/tournaments/${tournament.id}`, { replace: true })
+      }
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      submitting.current = false
+      setSaving(false)
+    }
   }
 
   return (
@@ -219,19 +276,19 @@ export function CreateTournamentPage() {
         <h1>Create your tournament</h1>
         <p>Build a cricket tournament setup one step at a time.</p>
       </div>
-      <div className="demo-notice"><CircleHelp size={16} /><span>Demonstration mode: the created tournament and registrations are saved in this browser, not sent to a backend.</span></div>
+      {demo && <div className="demo-notice"><CircleHelp size={16} /><span>Demonstration mode: tournament and registration data are saved in this browser.</span></div>}
       <div className="wizard-layout">
         <nav className="wizard-steps" aria-label="Tournament setup progress">
-          {workflowSteps.map((label, index) => (
-            <button type="button" className={`wizard-step ${step === index ? 'current' : ''} ${step > index ? 'complete' : ''}`} key={label} onClick={() => index <= step && setStep(index)} disabled={index > step} aria-current={step === index ? 'step' : undefined}>
-              <span>{step > index ? <Check size={13} /> : index + 1}</span>{label}
+          {steps.map((stepId, index) => (
+            <button type="button" className={`wizard-step ${stepIndex === index ? 'current' : ''} ${stepIndex > index ? 'complete' : ''}`} key={stepId} onClick={() => setStepIndex(index)} disabled={saving || index > stepIndex} aria-current={stepIndex === index ? 'step' : undefined}>
+              <span>{stepIndex > index ? <Check size={13} /> : index + 1}</span>{workflowSteps[stepId]}
             </button>
           ))}
         </nav>
         <section className="wizard-card">
           <div className="wizard-card-heading">
-            <div><span className="panel-kicker">STEP {step + 1} OF {workflowSteps.length}</span><h2>{workflowSteps[step]}</h2></div>
-            <span className="muted">{Math.round(((step + 1) / workflowSteps.length) * 100)}% complete</span>
+            <div><span className="panel-kicker">STEP {stepIndex + 1} OF {steps.length}</span><h2>{workflowSteps[step]}</h2></div>
+            <span className="muted">{Math.round(((stepIndex + 1) / steps.length) * 100)}% complete</span>
           </div>
           <div className="wizard-fields">
             {step === 0 && <>
@@ -241,9 +298,10 @@ export function CreateTournamentPage() {
                 <label>Start date<input type="date" value={form.startDate} onChange={(event) => update('startDate', event.target.value)} /></label>
                 <label>End date<input type="date" value={form.endDate} onChange={(event) => update('endDate', event.target.value)} min={form.startDate || undefined} /></label>
               </div>
+              {invalidDates && <p className="form-message" role="alert">End date must be on or after the start date.</p>}
             </>}
             {step === 1 && <><label>Team names, one per line<textarea rows="7" value={form.teams} onChange={(event) => update('teams', event.target.value)} placeholder={'Riverside CC\nNorthside XI\nValley Cricket Club'} /></label><p className="field-note">Team registration and roster management are available on the Teams page. This list is a setup note only.</p></>}
-            {step === 2 && <><label>Tournament format<select value={form.format} onChange={(event) => update('format', event.target.value)}><option>T20 Round Robin</option><option>50-Over Round Robin</option></select></label><p className="field-note">The local sample fixture generator supports round-robin formats; match overs and points can be configured in Match Configuration.</p></>}
+            {step === 2 && <><label>Tournament format<select value={form.format} onChange={(event) => update('format', event.target.value)}><option>T20 Round Robin</option><option>50-Over Round Robin</option></select></label>{demo && <p className="field-note">The local sample fixture generator supports round-robin formats. Configure overs and points in Match Configuration.</p>}</>}
             {step === 3 && <><label>Grounds to consider<textarea rows="5" value={form.stadiums} onChange={(event) => update('stadiums', event.target.value)} placeholder="Add ground names or manage them on the Stadiums page" /></label><Link className="text-link" to="/stadiums">Open stadium management <ArrowUpRight size={15} /></Link></>}
             {step === 4 && <><label>Officials to consider<textarea rows="5" value={form.officials} onChange={(event) => update('officials', event.target.value)} placeholder="Add umpire or match-official names" /></label><Link className="text-link" to="/officials">Open officials management <ArrowUpRight size={15} /></Link></>}
             {step === 5 && <><div className="form-grid"><label>Match duration (hours)<input type="number" min="1" max="12" value={form.matchDuration} onChange={(event) => update('matchDuration', event.target.value)} /></label><label>Minimum recovery (hours)<input type="number" min="0" max="168" value={form.recoveryHours} onChange={(event) => update('recoveryHours', event.target.value)} /></label></div><p className="demo-notice"><CircleHelp size={16} /> These preferences are captured for planning only; the current frontend has no allocation or constraint-validation API.</p></>}
@@ -251,17 +309,18 @@ export function CreateTournamentPage() {
               <ReviewRow label="Tournament" value={form.name || 'Not provided'} />
               <ReviewRow label="Host" value={form.hostInstitution || 'Not provided'} />
               <ReviewRow label="Dates" value={form.startDate && form.endDate ? `${form.startDate} — ${form.endDate}` : 'Not provided'} />
-              <ReviewRow label="Teams" value={form.teams.split('\n').filter(Boolean).length ? `${form.teams.split('\n').filter(Boolean).length} listed` : 'None listed'} />
+              {demo && <ReviewRow label="Teams" value={form.teams.split('\n').filter(Boolean).length ? `${form.teams.split('\n').filter(Boolean).length} listed` : 'None listed'} />}
               <ReviewRow label="Format" value={form.format} />
-              <ReviewRow label="Grounds / officials" value={`${form.stadiums.split('\n').filter(Boolean).length} / ${form.officials.split('\n').filter(Boolean).length} listed`} />
-              <p className="field-note">Finishing updates the in-session setup preview only. No tournament is sent to a backend.</p>
+              {demo && <ReviewRow label="Grounds / officials" value={`${form.stadiums.split('\n').filter(Boolean).length} / ${form.officials.split('\n').filter(Boolean).length} listed`} />}
+              {!demo && <p className="field-note">Save the tournament before registering teams, grounds and officials.</p>}
             </div>}
           </div>
+          {error && <p className="form-message" role="alert">{error}</p>}
           <div className="wizard-actions">
-            <button className="button button-quiet" type="button" onClick={() => step === 0 ? navigate('/') : setStep(step - 1)}><ChevronLeft size={16} /> {step === 0 ? 'Cancel' : 'Back'}</button>
-            {step < workflowSteps.length - 1
-              ? <button className="button button-primary" type="button" onClick={() => setStep(step + 1)} disabled={step === 0 && !form.name.trim()}>Continue <ChevronRight size={16} /></button>
-              : <button className="button button-primary" type="button" onClick={complete} disabled={!form.name.trim()}>Finish setup <Check size={16} /></button>}
+            <button className="button button-quiet" type="button" disabled={saving} onClick={() => stepIndex === 0 ? navigate('/') : setStepIndex(stepIndex - 1)}><ChevronLeft size={16} /> {stepIndex === 0 ? 'Cancel' : 'Back'}</button>
+            {stepIndex < steps.length - 1
+              ? <button className="button button-primary" type="button" onClick={() => setStepIndex(stepIndex + 1)} disabled={step === 0 && (!form.name.trim() || Boolean(invalidDates))}>Continue <ChevronRight size={16} /></button>
+              : <button className="button button-primary" type="button" onClick={complete} disabled={saving || !form.name.trim()}>{saving ? 'Saving…' : 'Finish setup'} <Check size={16} /></button>}
           </div>
         </section>
       </div>
@@ -274,29 +333,110 @@ function ReviewRow({ label, value }) {
 }
 
 export function LoginPage() {
-  const [submitted, setSubmitted] = useState(false)
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const { role: rolePath } = useParams()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const selectedRole = roleFromLoginPath(rolePath)
+
+  useEffect(() => {
+    if (rolePath && !selectedRole) navigate('/login', { replace: true })
+  }, [navigate, rolePath, selectedRole])
+
+  async function submit(event) {
+    event.preventDefault()
+    if (!auth) return
+    setSubmitting(true)
+    setError('')
+    try {
+      const account = await auth.login(email, password, selectedRole)
+      navigate(dashboardDestination(account.roles), { replace: true })
+    } catch (requestError) {
+      setError(requestError.message || 'Login failed. Check your email and password, then try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  const roleIcons = { ADMIN: Shield, ORGANIZER: CalendarDays, TEAM_MANAGER: Users, VIEWER: Eye }
   return (
-    <div className="workspace-page narrow-page">
-      <section className="simple-form-card">
-        <span className="eyebrow">ORGANIZER ACCESS</span>
-        <h1>Log in to TournamentHub</h1>
-        <p>Manage your cricket tournaments and matchday details.</p>
-        <form onSubmit={(event) => { event.preventDefault(); setSubmitted(true) }}>
-          <label>Email address<input type="email" placeholder="you@club.org" required /></label>
-          <label>Password<input type="password" placeholder="Your password" required /></label>
-          {submitted && <p className="form-message" role="status">Login is not connected because this project has no authentication API yet.</p>}
-          <button className="button button-primary button-full" type="submit">Continue <ArrowRight size={16} /></button>
+    <div className={`workspace-page ${selectedRole ? 'narrow-page' : 'login-selection-page'}`}>
+      {!selectedRole ? <section className="login-role-section">
+        <span className="eyebrow">WELCOME TO CRICCRAFT</span>
+        <h1>Choose your role</h1>
+        <p>Select how you use CricCraft to continue to sign in.</p>
+        <div className="login-role-grid">
+          {loginRoles.map(({ role, label, description }) => {
+            const Icon = roleIcons[role]
+            return <Link className="login-role-card" to={`/login/${role.toLowerCase().replaceAll('_', '-')}`} key={role}>
+              <span className="login-role-icon"><Icon size={18} strokeWidth={1.8} /></span>
+              <span className="login-role-copy"><strong>{role}</strong><span>{description}</span></span>
+              <ArrowRight className="login-role-arrow" size={16} />
+            </Link>
+          })}
+        </div>
+      </section> : <section className="simple-form-card">
+        <Link className="login-back-link" to="/login"><ChevronLeft size={15} /> Back to role selection</Link>
+        <span className="eyebrow">{selectedRole.replaceAll('_', ' ')}</span>
+        <h1>{loginRoles.find(({ role }) => role === selectedRole)?.label} login</h1>
+        <p>Sign in with the account assigned to this role.</p>
+        <form onSubmit={submit}>
+          <label>Email address<input type="email" placeholder="you@club.org" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label>Password<input type="password" placeholder="Your password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {error && <p className="form-message" role="alert">{error}</p>}
+          {!auth && <p className="form-message" role="status">Sign in is available in the live workspace.</p>}
+          <button className="button button-primary button-full" type="submit" disabled={!auth || submitting}>{submitting ? 'Signing in…' : 'Continue'} <ArrowRight size={16} /></button>
         </form>
-        <p className="form-footnote">New to TournamentHub? <Link to="/tournaments/create">Create a tournament</Link></p>
-      </section>
+        <p className="form-footnote">Accounts and role assignments are managed by an administrator.</p>
+      </section>}
     </div>
   )
 }
 
 export function TournamentOverviewPage() {
   const { id } = useParams()
+  const load = useCallback((signal) => getTournament(id, signal), [id])
+  const request = useApiResource(load)
+  const tournament = request.data
+
+  return (
+    <div className="workspace-page">
+      {tournament ? <>
+        <div className="page-intro tournament-intro">
+          <span className="eyebrow">TOURNAMENT</span>
+          <h1>{tournament.name}</h1>
+          <p>{[tournament.format, tournament.hostInstitution].filter(Boolean).join(' · ')}</p>
+          <div className="page-actions">
+            <Link className="button button-primary" to={`/tournaments/${tournament.id}/edit`}>Edit tournament <ArrowRight size={16} /></Link>
+            <Link className="button button-secondary" to={`/teams?tournament=${tournament.id}`}>Teams</Link>
+            <Link className="button button-secondary" to={`/stadiums?tournament=${tournament.id}`}>Stadiums</Link>
+            <Link className="button button-secondary" to={`/officials?tournament=${tournament.id}`}>Officials</Link>
+            <Link className="button button-secondary" to={`/schedule?tournament=${tournament.id}`}>Schedule</Link>
+            <Link className="button button-secondary" to="/tournaments">Back to tournaments</Link>
+          </div>
+        </div>
+        <section className="content-panel">
+          <div className="panel-heading"><h2>Tournament details</h2></div>
+          <div className="review-list">
+            <ReviewRow label="Status" value={tournament.statusCode || 'Not set'} />
+            <ReviewRow label="Start date" value={tournament.startDate || 'Not set'} />
+            <ReviewRow label="End date" value={tournament.endDate || 'Not set'} />
+            <ReviewRow label="Edition" value={tournament.edition || 'Not set'} />
+            <ReviewRow label="Season" value={tournament.season || 'Not set'} />
+            <ReviewRow label="Ball type" value={tournament.ballType || 'Not set'} />
+          </div>
+        </section>
+      </> : <TournamentRequestStatus {...request} />}
+    </div>
+  )
+}
+
+export function DemoTournamentOverviewPage() {
+  const { id } = useParams()
   const { tournaments: allTournaments, matches: allMatches, teams, matchConfig, setActiveTournament } = useTournamentSetup()
-  const tournament = allTournaments.find((item) => item.id === id) || allTournaments[0]
+  const tournament = allTournaments.find((item) => item.id === id)
   const tournamentTeams = teams.filter((team) => team.tournamentId === tournament?.id)
   const teamNames = tournamentTeams.map((team) => team.name)
   const matches = allMatches.filter((match) => match.tournamentId === tournament?.id)
@@ -305,6 +445,10 @@ export function TournamentOverviewPage() {
   useEffect(() => {
     if (tournament?.id) setActiveTournament(tournament.id)
   }, [setActiveTournament, tournament?.id])
+
+  if (!tournament) return (
+    <div className="workspace-page"><TournamentRequestStatus error={{ status: 404 }} /></div>
+  )
 
   return (
     <div className="workspace-page">

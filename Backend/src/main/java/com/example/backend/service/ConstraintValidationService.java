@@ -108,6 +108,11 @@ public class ConstraintValidationService {
         if (input.officials() == null || input.officials().isEmpty()) {
             errors.add(conflict("INVALID_INPUT", "At least one official is required"));
         } else {
+            if (input.officialsRequiredPerMatch() != null
+                    && input.officials().size() < input.officialsRequiredPerMatch()) {
+                errors.add(conflict("INVALID_INPUT", "At least " + input.officialsRequiredPerMatch()
+                    + " eligible officials are required per match"));
+            }
             for (OfficialDTO official : input.officials()) {
                 if (official == null || official.id() == null || official.id() <= 0
                         || official.name() == null || official.name().isBlank()) {

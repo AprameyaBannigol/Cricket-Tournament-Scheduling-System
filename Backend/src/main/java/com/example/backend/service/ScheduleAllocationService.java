@@ -46,50 +46,11 @@ public class ScheduleAllocationService {
 
     public CompleteSchedulingResult generateSchedule(TournamentSchedulingInputDTO input) {
         long startNanos = System.nanoTime();
-        List<SchedulingConflictDTO> inputErrors = validationService.validateInput(input);
-        if (!inputErrors.isEmpty()) {
-            return result(input == null ? null : input.tournamentId(),
-                Status.INVALID_INPUT, 0, List.of(), 0, 0, 0,
-                startNanos, List.of(), inputErrors);
-        }
-        if (!validSearchLimits()) {
-            return result(input.tournamentId(), Status.INVALID_INPUT, 0, List.of(),
-                0, 0, 0, startNanos, List.of(),
-                List.of(conflict("INVALID_SEARCH_LIMITS",
-                    "Configured scheduling search limits must be positive")));
-        }
+        SearchPreparation preparation = prepareSearch(input, startNanos);
+        if (preparation.failure() != null) return preparation.failure();
 
-        SchedulingResult fixtureResult = fixtureGenerationService.generateFixtures(
-            new TournamentInputDTO(input.tournamentId(),
-                input.teams().stream().map(team -> new TeamDTO(team.id(), team.name())).toList())
-        );
-        List<MatchFixture> fixtures = fixtureResult.fixtures();
-        Search search = new Search(input, fixtures, startNanos);
-        search.generateCandidates();
-
-        if (search.limitReached) {
-            return result(input.tournamentId(), Status.SEARCH_LIMIT_REACHED,
-                fixtures.size(), List.of(), search.nodes, search.backtracks,
-                search.candidateAssignments, startNanos, List.of(),
-                List.of(conflict("SEARCH_LIMIT_REACHED",
-                    "A configured search limit was reached during candidate generation")));
-        }
-
-        MatchFixture noCandidateFixture = fixtures.stream()
-            .filter(fixture -> search.candidates.getOrDefault(fixture.matchNumber(), List.of())
-                .isEmpty())
-            .findFirst()
-            .orElse(null);
-        if (noCandidateFixture != null) {
-            return result(input.tournamentId(), Status.NO_FEASIBLE_SCHEDULE,
-                fixtures.size(), List.of(), search.nodes, search.backtracks,
-                search.candidateAssignments, startNanos, List.of(),
-                List.of(conflict("NO_CANDIDATES",
-                    "No candidate satisfies availability and eligibility for match "
-                        + noCandidateFixture.matchNumber(),
-                    noCandidateFixture)));
-        }
-
+        Search search = preparation.search();
+        List<MatchFixture> fixtures = search.fixtures;
         boolean scheduled = search.solve();
         if (search.limitReached) {
             return result(input.tournamentId(), Status.SEARCH_LIMIT_REACHED,
@@ -130,6 +91,67 @@ public class ScheduleAllocationService {
                 "Official availability, eligibility, and overlap constraints passed."
             ),
             List.of());
+    }
+
+    public List<SchedulingConflictDTO> checkReadiness(TournamentSchedulingInputDTO input) {
+        SearchPreparation preparation = prepareSearch(input, System.nanoTime());
+        return preparation.failure() == null ? List.of() : preparation.failure().conflicts();
+    }
+
+    // Readiness shares generation's input and candidate checks and stops before allocation.
+    private SearchPreparation prepareSearch(TournamentSchedulingInputDTO input, long startNanos) {
+        List<SchedulingConflictDTO> inputErrors = validationService.validateInput(input);
+        if (!inputErrors.isEmpty()) {
+            return failed(result(input == null ? null : input.tournamentId(),
+                Status.INVALID_INPUT, 0, List.of(), 0, 0, 0,
+                startNanos, List.of(), inputErrors));
+        }
+        if (!validSearchLimits()) {
+            return failed(result(input.tournamentId(), Status.INVALID_INPUT, 0, List.of(),
+                0, 0, 0, startNanos, List.of(),
+                List.of(conflict("INVALID_SEARCH_LIMITS",
+                    "Configured scheduling search limits must be positive"))));
+        }
+
+        SchedulingResult fixtureResult = fixtureGenerationService.generateFixtures(
+            new TournamentInputDTO(input.tournamentId(),
+                input.teams().stream().map(team -> new TeamDTO(team.id(), team.name())).toList())
+        );
+        List<MatchFixture> fixtures = fixtureResult.fixtures();
+        Search search = new Search(input, fixtures, startNanos);
+        search.generateCandidates();
+
+        if (search.limitReached) {
+            return failed(result(input.tournamentId(), Status.SEARCH_LIMIT_REACHED,
+                fixtures.size(), List.of(), search.nodes, search.backtracks,
+                search.candidateAssignments, startNanos, List.of(),
+                List.of(conflict("SEARCH_LIMIT_REACHED",
+                    "A configured search limit was reached during candidate generation"))));
+        }
+
+        MatchFixture noCandidateFixture = fixtures.stream()
+            .filter(fixture -> search.candidates.getOrDefault(fixture.matchNumber(), List.of())
+                .isEmpty())
+            .findFirst()
+            .orElse(null);
+        if (noCandidateFixture != null) {
+            return failed(result(input.tournamentId(), Status.NO_FEASIBLE_SCHEDULE,
+                fixtures.size(), List.of(), search.nodes, search.backtracks,
+                search.candidateAssignments, startNanos, List.of(),
+                List.of(conflict("NO_CANDIDATES",
+                    "No candidate satisfies overlapping team, stadium and official availability for match "
+                        + noCandidateFixture.matchNumber(),
+                    noCandidateFixture))));
+        }
+
+        return new SearchPreparation(search, null);
+    }
+
+    private SearchPreparation failed(CompleteSchedulingResult result) {
+        return new SearchPreparation(null, result);
+    }
+
+    private record SearchPreparation(Search search, CompleteSchedulingResult failure) {
     }
 
     private boolean validSearchLimits() {
