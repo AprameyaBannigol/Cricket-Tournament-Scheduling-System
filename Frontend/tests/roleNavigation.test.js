@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardDestination, loginRoles, roleFromLoginPath } from '../src/auth/roleNavigation.js'
+import { dashboardDestinationForRole, loginRoles, requiresRoleSessionSwitch, roleFromLoginPath } from '../src/auth/roleNavigation.js'
 
 test('role selection always offers exactly four supported role cards and maps their login paths', () => {
   assert.deepEqual(loginRoles.map(({ role }) => role), ['ADMIN', 'ORGANIZER', 'TEAM_MANAGER', 'VIEWER'])
@@ -9,19 +9,17 @@ test('role selection always offers exactly four supported role cards and maps th
   assert.equal(roleFromLoginPath('unknown'), null)
 })
 
-test('each supported role receives its dashboard destination', () => {
-  assert.equal(dashboardDestination(['ADMIN']), '/admin')
-  assert.equal(dashboardDestination(['ORGANIZER']), '/organizer')
-  assert.equal(dashboardDestination(['TEAM_MANAGER']), '/team-manager')
-  assert.equal(dashboardDestination(['VIEWER']), '/viewer')
+test('dashboard destination is derived from the selected role and rejects unsupported roles', () => {
+  assert.equal(dashboardDestinationForRole('ADMIN'), '/admin')
+  assert.equal(dashboardDestinationForRole('ORGANIZER'), '/organizer')
+  assert.equal(dashboardDestinationForRole('TEAM_MANAGER'), '/team-manager')
+  assert.equal(dashboardDestinationForRole('VIEWER'), '/viewer')
+  assert.equal(dashboardDestinationForRole('UNKNOWN'), null)
 })
 
-test('dashboard destination precedence is deterministic for multi-role accounts', () => {
-  assert.equal(dashboardDestination(['VIEWER', 'ORGANIZER']), '/organizer')
-  assert.equal(dashboardDestination(['TEAM_MANAGER', 'ADMIN']), '/admin')
-})
-
-test('accounts without a supported role use tournament browsing', () => {
-  assert.equal(dashboardDestination([]), '/tournaments')
-  assert.equal(dashboardDestination(), '/tournaments')
+test('an existing role session must be explicitly ended before switching role context', () => {
+  assert.equal(requiresRoleSessionSwitch(['ADMIN'], 'ORGANIZER'), true)
+  assert.equal(requiresRoleSessionSwitch(['ADMIN'], 'ADMIN'), false)
+  assert.equal(requiresRoleSessionSwitch(['ADMIN', 'ORGANIZER'], 'ORGANIZER'), true)
+  assert.equal(requiresRoleSessionSwitch([], 'ORGANIZER'), false)
 })

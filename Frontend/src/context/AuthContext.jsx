@@ -26,6 +26,9 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password, selectedRole) => {
     setError('')
     const current = await requestJson('/api/auth/login', { method: 'POST', body: { email, password, selectedRole } })
+    if (!current.roles?.includes(selectedRole)) {
+      throw new ApiError(403, 'This account is not assigned to the selected role. Choose an assigned role or contact an administrator.')
+    }
     setUser(current)
     return current
   }, [])

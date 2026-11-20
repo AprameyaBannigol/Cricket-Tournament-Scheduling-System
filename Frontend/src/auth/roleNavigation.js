@@ -5,8 +5,12 @@ export const loginRoles = [
   { role: 'VIEWER', path: '/viewer', label: 'Viewer', description: 'Browse tournaments, fixtures, results and standings.' },
 ]
 
-export function dashboardDestination(roles = []) {
-  return loginRoles.find(({ role }) => roles.includes(role))?.path ?? '/tournaments'
+export function dashboardDestinationForRole(role) {
+  return loginRoles.find((entry) => entry.role === role)?.path ?? null
+}
+
+export function requiresRoleSessionSwitch(activeRoles = [], selectedRole) {
+  return activeRoles.length > 0 && (activeRoles.length !== 1 || !activeRoles.includes(selectedRole))
 }
 
 export function roleFromLoginPath(pathRole = '') {

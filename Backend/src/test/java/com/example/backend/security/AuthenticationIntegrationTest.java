@@ -123,6 +123,26 @@ class AuthenticationIntegrationTest {
     }
 
     @Test
+    void adminOnlyAccountCanSelectAdminButCannotSelectAnyOtherRole() throws Exception {
+        String adminPassword = randomPassword();
+        AppUser admin = users.saveAndFlush(new AppUser("admin-role-check@example.org", encoder.encode(adminPassword), Set.of(AppRole.ADMIN)));
+
+        MvcResult adminLogin = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(loginJson(admin.getEmail(), adminPassword, AppRole.ADMIN)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(1))
+            .andExpect(jsonPath("$.roles[0]").value("ADMIN")).andReturn();
+        mvc.perform(get("/api/admin/dashboard").session((MockHttpSession) adminLogin.getRequest().getSession(false)))
+            .andExpect(status().isOk());
+
+        for (AppRole selected : Set.of(AppRole.ORGANIZER, AppRole.TEAM_MANAGER, AppRole.VIEWER)) {
+            mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                    .content(loginJson(admin.getEmail(), adminPassword, selected)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("Selected role is not assigned to this account"));
+        }
+    }
+
+    @Test
     void viewerCannotCreateTournamentAndPublicFixtureReadsRemainAvailable() throws Exception {
         MvcResult login = mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson(testPassword)))
@@ -312,5 +332,8 @@ class AuthenticationIntegrationTest {
     private String randomPassword() { return UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", ""); }
     private String loginJson(String password) {
         return "{\"email\":\"viewer@example.org\",\"password\":\"" + password + "\",\"selectedRole\":\"VIEWER\"}";
+    }
+    private String loginJson(String email, String password, AppRole role) {
+        return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\",\"selectedRole\":\"" + role.name() + "\"}";
     }
 }

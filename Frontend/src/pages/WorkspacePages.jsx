@@ -22,7 +22,7 @@ import { useApiResource } from '../api/useApiResource'
 import TournamentRequestStatus from '../components/TournamentRequestStatus'
 import { useTournamentSetup } from '../context/TournamentSetupContext'
 import { useAuth } from '../context/AuthContext'
-import { dashboardDestination, loginRoles, roleFromLoginPath } from '../auth/roleNavigation'
+import { dashboardDestinationForRole, loginRoles, requiresRoleSessionSwitch, roleFromLoginPath } from '../auth/roleNavigation'
 
 const workflowSteps = [
   'Tournament details',
@@ -340,11 +340,35 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [switchingSession, setSwitchingSession] = useState(false)
+  const [sessionError, setSessionError] = useState('')
   const selectedRole = roleFromLoginPath(rolePath)
+  const activeRoles = auth?.user?.roles ?? []
+  const existingSessionNeedsSwitch = Boolean(selectedRole && auth && !auth.loading && auth.user
+    && requiresRoleSessionSwitch(activeRoles, selectedRole))
 
   useEffect(() => {
     if (rolePath && !selectedRole) navigate('/login', { replace: true })
   }, [navigate, rolePath, selectedRole])
+
+  useEffect(() => {
+    if (selectedRole && auth && !auth.loading && auth.user && !existingSessionNeedsSwitch) {
+      const destination = dashboardDestinationForRole(selectedRole)
+      if (destination) navigate(destination, { replace: true })
+    }
+  }, [auth, existingSessionNeedsSwitch, navigate, selectedRole])
+
+  async function switchAccountRole() {
+    setSwitchingSession(true)
+    setSessionError('')
+    try {
+      await auth.logout()
+    } catch (requestError) {
+      setSessionError(requestError.message || 'Could not end the current session. Please retry.')
+    } finally {
+      setSwitchingSession(false)
+    }
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -353,7 +377,12 @@ export function LoginPage() {
     setError('')
     try {
       const account = await auth.login(email, password, selectedRole)
-      navigate(dashboardDestination(account.roles), { replace: true })
+      if (!account.roles?.includes(selectedRole)) {
+        throw new Error('This account is not assigned to the selected role. Choose an assigned role or contact an administrator.')
+      }
+      const destination = dashboardDestinationForRole(selectedRole)
+      if (!destination) throw new Error('Choose one of the four available roles to continue.')
+      navigate(destination, { replace: true })
     } catch (requestError) {
       setError(requestError.message || 'Login failed. Check your email and password, then try again.')
     } finally {
@@ -377,6 +406,15 @@ export function LoginPage() {
             </Link>
           })}
         </div>
+      </section> : auth?.loading ? <section className="simple-form-card"><p role="status">Checking your existing session…</p></section>
+      : existingSessionNeedsSwitch ? <section className="simple-form-card">
+        <span className="eyebrow">CURRENT SESSION</span>
+        <h1>Switch to {selectedRole.replaceAll('_', ' ')}</h1>
+        <p>You are signed in as {activeRoles.join(', ')}. End this session before signing in with another role.</p>
+        {sessionError && <p className="form-message" role="alert">{sessionError}</p>}
+        <button className="button button-primary button-full" type="button" onClick={switchAccountRole} disabled={switchingSession}>
+          {switchingSession ? 'Signing out…' : 'Log out and continue'}
+        </button>
       </section> : <section className="simple-form-card">
         <Link className="login-back-link" to="/login"><ChevronLeft size={15} /> Back to role selection</Link>
         <span className="eyebrow">{selectedRole.replaceAll('_', ' ')}</span>
